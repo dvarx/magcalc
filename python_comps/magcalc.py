@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from math import floor
-#from mayavi import mlab
+from mayavi import mlab
 from scipy.interpolate import RegularGridInterpolator
 
 def linidx2volidx(n):
@@ -63,47 +63,21 @@ def get_magfield_data(filenames,N):
 
 if __name__=="__main__":
     # extract field data
-    os.chdir("C:\\Users\\dvarx\\src\\magcalc\\python_comps")
+    os.chdir("C:\\Users\\dvarx\\Desktop\\mpi_sim\\python_comps")
     N=13                        # no field samples in each direction
     filenames=["bxs.csv","bys.csv","bzs.csv"]
     (Bs,coordinates)=get_magfield_data(filenames,N)
 
     #calculate field
-    currents=np.array([10,10,10,10,10,10])          #opposing fields
-    #currents=np.array([10,10,10,-10,-10,-10])        #additive fields
+    #currents=np.array([10,10,10,10,10,10])          #opposing fields
+    currents=np.array([10,10,10,-10,-10,-10])        #additive fields
     Bsum=Bs.dot(currents)
 
-    #extract the coordinate values of the grid
-    xcoords=list(set(list(coordinates[:,0])))
-    xcoords.sort()
-    ycoords=list(set(list(coordinates[:,1])))
-    ycoords.sort()
-    zcoords=list(set(list(coordinates[:,2])))
-    zcoords.sort()
-    #define interpolator function
-    def getBInterpolator(B):
-        return RegularGridInterpolator((xcoords,ycoords,zcoords),B)
+    #reorder indices for usage with RegularGridInterpolator 
+    #B=RegularGridInterpolator((coordinates[:,2],coordinates[:,1],coordinates[:,0]),Bsum)
 
-    Bfield=getBInterpolator(Bsum)
+    mlab.quiver3d(coordinates[:,0],coordinates[:,1],coordinates[:,2],Bsum[:,:,:,0].flatten(),Bsum[:,:,:,1].flatten(),Bsum[:,:,:,2].flatten())
 
-    #plot the B field alongside the x axis
-    xs=np.linspace(-2.5e-2,2.5e-2,60)
-    ys=xs
-    zs=xs
-    magBsxaxis=[np.linalg.norm(Bfield((x,0,0))) for x in xs]
-    magBsyaxis=[np.linalg.norm(Bfield((0,y,0))) for y in ys]
-    magBszaxis=[np.linalg.norm(Bfield((0,0,z))) for z in zs]
-
-    plt.plot(xs,magBsxaxis)
-    plt.plot(ys,magBsyaxis)
-    plt.plot(zs,magBszaxis)
-
-    plt.legend(("x axis","y axis","z axis"))
-
-    plt.show()
-
-    #mlab.quiver3d(coordinates[:,0],coordinates[:,1],coordinates[:,2],Bsum[:,:,:,0].flatten(),Bsum[:,:,:,1].flatten(),Bsum[:,:,:,2].flatten())
-
-    #mlab.show()
+    mlab.show()
 
     print("finished")
