@@ -70,9 +70,11 @@ if __name__=="__main__":
     (Bs,coordinates)=get_magfield_data(filenames,N)
 
     #calculate field
-    currents=np.array([10,10,10,10,10,10])          #opposing fields
-    #currents=np.array([10,10,10,-10,-10,-10])        #additive fields
+    #currents=np.array([10,10,10,10,10,10])          #opposing fields
+    currents=np.array([10,10,10,-10,-10,-10])        #additive fields
     Bsum=Bs.dot(currents)
+
+    field_int=getInterpolator(Bsum)
 
     #extract the coordinate values of the grid
     xcoords=list(set(list(coordinates[:,0])))
@@ -138,11 +140,22 @@ if __name__=="__main__":
             B=Bact.dot(i)
             print("Norm of current solution: %f"%(np.linalg.norm(B)))
             #compute minimum field growth in any direction
-            dB_per_ds_x=min(norm(Bact_plusdx.dot(i))/ds,norm(Bact_minusdx.dot(i))/ds)
-            dB_per_ds_y=min(norm(Bact_plusdy.dot(i))/ds,norm(Bact_minusdy.dot(i))/ds)
-            dB_per_ds_z=min(norm(Bact_plusdz.dot(i))/ds,norm(Bact_minusdz.dot(i))/ds)
-            dB_per_ds_min=min((dB_per_ds_x,dB_per_ds_y,dB_per_ds_z))
-            dB_per_ds_arr[idx,2]=dB_per_ds_min
+            #dB_per_ds_x=min(norm(Bact_plusdx.dot(i))/ds,norm(Bact_minusdx.dot(i))/ds)
+            #dB_per_ds_y=min(norm(Bact_plusdy.dot(i))/ds,norm(Bact_minusdy.dot(i))/ds)
+            #dB_per_ds_z=min(norm(Bact_plusdz.dot(i))/ds,norm(Bact_minusdz.dot(i))/ds)
+            #dB_per_ds_min=min((dB_per_ds_x,dB_per_ds_y,dB_per_ds_z))
+            #dB_per_ds_arr[idx,2]=dB_per_ds_min
+            currentBField=Bs.dot(i)
+            Bx=currentBField[6,6,7] #field (10mm,0,0) from zero point
+            By=currentBField[6,7,6] #field (0,10mm,0) from zero point
+            Bz=currentBField[7,6,6] #field (0,0,10mm) from zero point
+            Bmat=np.zeros((3,3))
+            Bmat[0,:]=Bx
+            Bmat[1,:]=By
+            Bmat[2,:]=Bz
+            Uloc,Sloc,Vloc=np.linalg.svd(Bmat)
+            minsingval=np.min(Sloc)
+            dB_per_ds_arr[idx,2]=minsingval
             idx+=1
 
     #find the current combination with the maximum dB_per_ds
