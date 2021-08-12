@@ -56,6 +56,8 @@ def get_magfield_data(filenames,N):
                         ny=linidx2volidx(linidx)[1]
                         nz=linidx2volidx(linidx)[2]
                         coilidx=linecounter-5
+                        if(nz>=N):
+                            break
                         Bs[nx,ny,nz,coordidx,coilidx]=float(split_frags[n])
 
         fptr.close()
@@ -66,7 +68,7 @@ if __name__=="__main__":
     # extract field data
     os.chdir("C:\\Users\\dvarx\\src\\magcalc\\python_comps")
     N=13                        # no field samples in each direction
-    filenames=["bxs.csv","bys.csv","bzs.csv"]
+    filenames=["bxs_wcore.csv","bys_wcore.csv","bzs_wcore.csv"]
     (Bs,coordinates)=get_magfield_data(filenames,N)
 
     #calculate field
