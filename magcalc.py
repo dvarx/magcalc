@@ -191,33 +191,45 @@ if __name__=="__main__":
 
     #main simulation
     #-------------------------------------------------------------------------------------
-    usint=np.zeros(len(ts))
-    usig=np.zeros(len(ts))
-    Bs=np.zeros(len(ts))
-    usint[0]=0
-    usig[0]=0
-    for i in range(1,len(ts)):
-        t=i*dt
-        currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
+    #particle positions to be simulated
+    Nsweep=10
+    zs_sweep=np.linspace(-2e-2,2e-2,Nsweep)
+    ys_sweep=np.linspace(-2e-2,2e-2,Nsweep)
+    usint=np.zeros((len(ts),Nsweep,Nsweep))
+    usig=np.zeros((len(ts),Nsweep,Nsweep))
+    Bs=np.zeros((len(ts),Nsweep,Nsweep))
+    
+    for sx in range(0,Nsweep):
+        for sy in range(0,Nsweep):
+            #compute the magnetic field at the origin
+            zp=zs_sweep[sx]
+            yp=ys_sweep[sy]
+            print("Simulating signals with particle at position [%f,%f,%f]"%(0,yp,zp))
+            for i in range(1,len(ts)):
+                t=i*dt
+                currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
+                Bsum=system.getBact((0,yp,zp)).dot(currents)
+        
+                #compute the saturation factor (value of langevin function)
+                Bs[i,sx,sy]=norm(Bsum)
+                usint[i,sx,sy]=langevin(alpha*beta*norm(Bsum)/mu0)
+                usig[i,sx,sy]=(usint[i,sx,sy]-usint[i-1,sx,sy])/dt
 
-        #compute the magnetic field at the origin
-        Bsum=system.getBact((0,0,0)).dot(currents)
 
-        #compute the saturation factor (value of langevin function)
-        Bs[i]=norm(Bsum)
-        usint[i]=langevin(alpha*beta*norm(Bsum)/mu0)
-        usig[i]=(usint[i]-usint[i-1])/dt
-
+    #select signals to plot
+    usig_plt=usig[:,5,5]
+    usint_plt=usint[:,5,5]
+    Bs_plt=Bs[:,5,5]
 
     fig, axs = plt.subplots(3,sharex=True)
     fig.suptitle('MPI Signals')
-    axs[0].plot(ts*1e3,usint)
+    axs[0].plot(ts*1e3,usint_plt)
     axs[0].set_ylabel(r"$\mathcal{L}(M)=\frac{M}{M_{sat}}$")
     axs[0].grid()
-    axs[1].plot(ts*1e3,usig)
+    axs[1].plot(ts*1e3,usig_plt)
     axs[1].grid()
     axs[1].set_ylabel(r"$\frac{d}{dt}\mathcal{L}(t)$")
-    axs[2].plot(ts*1e3,Bs)
+    axs[2].plot(ts*1e3,Bs_plt)
     axs[2].grid()
     axs[2].set_ylabel(r"$|B(\vec{r_{P}},t)|$")
     plt.show()
