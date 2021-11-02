@@ -8,9 +8,11 @@ Created on Mon Nov  1 16:44:37 2021
 import numpy as np
 from numpy.linalg import norm
 import matplotlib.pyplot as plt
+import pickle
 
-usig=np.load("sim_data/usig.npy")
-usint=np.load("sim_data/usint.npy")
+fptr=open("comsol/6a_xmag_add.pkl","rb")
+(usig,usint,currents_app,Bs)=pickle.load(fptr)
+fptr.close()
 
 N=usig.shape[1]
 

@@ -5,6 +5,8 @@ from math import floor,sqrt,pi,sin,cos,gcd,sinh,cosh
 from numpy.linalg import norm
 from scipy.interpolate import RegularGridInterpolator
 from scipy.fft import fft
+import sys
+import pickle
 
 mu0=4*pi*1e-7
 kb=1.38e-23
@@ -122,7 +124,36 @@ class magnetic_system:
         plt.imshow(vals)
         plt.show()
 
+def parse_boolean(arg):
+    if(arg.lower()=="true"):
+        res=True
+    elif(arg.lower()=="false"):
+        res=False
+    else:
+        raise Exception("invalid input argument")
+    return res
+
+"""
+script call: python magcalc.py 6a_fullmag_opp True True
+argv[1] : filename to store data to
+argv[2] : opposing_currents
+argv[3] : full_magentization
+"""
 if __name__=="__main__":
+    #parse input arguments
+    filename=str(sys.argv[1])
+    opposing_currents=parse_boolean(sys.argv[2])
+    fullmag=parse_boolean(sys.argv[3])
+
+    if(opposing_currents):
+        print("running simulation with opposing currents")
+    else:
+        print("running simulation with additive currents")
+    if(fullmag):
+        print("running simulation with full magnetization vector M")
+    else:
+        print("running simulation with x component of magnetization vector")
+    
     # extract field data
     os.chdir(os.getcwd()+"\\comsol")
     N=13  # no field samples in each direction
@@ -160,9 +191,9 @@ if __name__=="__main__":
     i1s=iampl*np.sin(2*pi*f1*ts)
     i2s=iampl*np.sin(2*pi*f2*ts)
     i3s=iampl*np.sin(2*pi*f3*ts)
-    plt.figure(1)
-    ax = plt.axes(projection='3d')
-    ax.plot3D(i1s,i2s,i3s)
+    #plt.figure(1)
+    #ax = plt.axes(projection='3d')
+    #ax.plot3D(i1s,i2s,i3s)
 
     #define the concentration function & magnetization function
     #-------------------------------------------------------------------------------------
@@ -181,10 +212,10 @@ if __name__=="__main__":
     Ms=np.zeros(Bs.shape)
     for i in range(0,len(Bs)):
         Ms[i]=M(c,Bs[i]/mu0)
-    plt.figure()
-    plt.plot(1e3*Bs,Ms)
-    plt.xlabel("B [mT]")
-    plt.show()
+    #plt.figure()
+    #plt.plot(1e3*Bs,Ms)
+    #plt.xlabel("B [mT]")
+    #plt.show()
 
     #define the phantom concentration function
     #-------------------------------------------------------------------------------------
@@ -197,7 +228,8 @@ if __name__=="__main__":
     ys_sweep=np.linspace(-2e-2,2e-2,Nsweep)
     usint=np.zeros((len(ts),Nsweep,Nsweep))
     usig=np.zeros((len(ts),Nsweep,Nsweep))
-    Bs=np.zeros((len(ts),Nsweep,Nsweep))
+    Bs=np.zeros((3,len(ts),Nsweep,Nsweep))
+    currents_app=np.zeros((6,len(ts)))
     
     for sx in range(0,Nsweep):
         for sy in range(0,Nsweep):
@@ -207,14 +239,26 @@ if __name__=="__main__":
             print("Simulating signals with particle at position [%f,%f,%f]"%(0,yp,zp))
             for i in range(1,len(ts)):
                 t=i*dt
-                currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
+                if opposing_currents:
+                    currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
+                else:
+                    currents=np.array([i1s[i],i2s[i],i3s[i],-i1s[i],-i2s[i],-i3s[i]])
                 Bsum=system.getBact((0,yp,zp)).dot(currents)
         
                 #compute the saturation factor (value of langevin function)
-                Bs[i,sx,sy]=norm(Bsum)
-                usint[i,sx,sy]=langevin(alpha*beta*norm(Bsum)/mu0)
+                Bs[:,i,sx,sy]=Bsum
+                currents_app[:,i]=currents
+                if(fullmag):
+                    usint[i,sx,sy]=langevin(alpha*beta*norm(Bsum)/mu0)
+                else:
+                    usint[i,sx,sy]=Bsum.dot(np.array([1,0,0]))/norm(Bsum)*langevin(alpha*beta*norm(Bsum)/mu0)
                 usig[i,sx,sy]=(usint[i,sx,sy]-usint[i-1,sx,sy])/dt
 
+    fptr=open(filename,"wb")
+    pickle.dump((usig,usint,currents_app,Bs),fptr)
+    fptr.close()
+
+    exit()
 
     #select signals to plot
     usig_plt=usig[:,5,5]
