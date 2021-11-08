@@ -197,17 +197,16 @@ if __name__=="__main__":
 
     #define the concentration function & magnetization function
     #-------------------------------------------------------------------------------------
-    Msat=6.5e3              #saturation magnetization [A/m]
     V=4*pi/3*(30e-9/2)**3   #particle volume [m^3]
-    m=Msat*V                #maximum magnetic dipole moment of particle [Am^2]
+    Dparticle=50e-9
+    m=0.6/mu0*pi/6*Dparticle**3         #magnetic moment of particle (V_particle*Hsat)
     beta=mu0*m/(kb*Tp)
     #c=Msat/m                #particle concentration for unity iron concentration
     c=116*NA/(1e-3)         #166mol/l as reported by Panagiotopoulos1 et al
     #computes the magnetization M[A/m] dependent upon external magnetic field H[A/m] and iron volumetric concentration [m^-3]
-    alpha=100  #unknown correction factor
     def M(c,H):
         global mu0,m,beta
-        return c*m*langevin(alpha*beta*H)
+        return c*m*langevin(beta*H)
     Bs=np.linspace(0,20e-3,100)
     Ms=np.zeros(Bs.shape)
     for i in range(0,len(Bs)):
@@ -226,33 +225,39 @@ if __name__=="__main__":
     Nsweep=10
     zs_sweep=np.linspace(-2e-2,2e-2,Nsweep)
     ys_sweep=np.linspace(-2e-2,2e-2,Nsweep)
-    usint=np.zeros((len(ts),Nsweep,Nsweep))
-    usig=np.zeros((len(ts),Nsweep,Nsweep))
-    Bs=np.zeros((3,len(ts),Nsweep,Nsweep))
+    xs_sweep=np.linspace(-2e-2,2e-2,Nsweep)
+    usint=np.zeros((len(ts),Nsweep,Nsweep,Nsweep))
+    usig=np.zeros((len(ts),Nsweep,Nsweep,Nsweep))
+    Bs=np.zeros((3,len(ts),Nsweep,Nsweep,Nsweep))
     currents_app=np.zeros((6,len(ts)))
     
-    for sx in range(0,Nsweep):
+    simcounter=0
+    for sz in range(0,Nsweep):
         for sy in range(0,Nsweep):
-            #compute the magnetic field at the origin
-            zp=zs_sweep[sx]
-            yp=ys_sweep[sy]
-            print("Simulating signals with particle at position [%f,%f,%f]"%(0,yp,zp))
-            for i in range(1,len(ts)):
-                t=i*dt
-                if opposing_currents:
-                    currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
-                else:
-                    currents=np.array([i1s[i],i2s[i],i3s[i],-i1s[i],-i2s[i],-i3s[i]])
-                Bsum=system.getBact((0,yp,zp)).dot(currents)
-        
-                #compute the saturation factor (value of langevin function)
-                Bs[:,i,sx,sy]=Bsum
-                currents_app[:,i]=currents
-                if(fullmag):
-                    usint[i,sx,sy]=langevin(alpha*beta*norm(Bsum)/mu0)
-                else:
-                    usint[i,sx,sy]=Bsum.dot(np.array([1,0,0]))/norm(Bsum)*langevin(alpha*beta*norm(Bsum)/mu0)
-                usig[i,sx,sy]=(usint[i,sx,sy]-usint[i-1,sx,sy])/dt
+            for sx in range(0,Nsweep):
+                #compute the magnetic field at the origin
+                zp=zs_sweep[sz]
+                yp=ys_sweep[sy]
+                xp=xs_sweep[sx]
+                print("Simulating signals with particle at position [%f,%f,%f]"%(xp,yp,zp))
+                print("Simulation Status: %.2f"%(100*simcounter/Nsweep**3)+"%")
+                for i in range(1,len(ts)):
+                    t=i*dt
+                    if opposing_currents:
+                        currents=np.array([i1s[i],i2s[i],i3s[i],i1s[i],i2s[i],i3s[i]])
+                    else:
+                        currents=np.array([i1s[i],i2s[i],i3s[i],-i1s[i],-i2s[i],-i3s[i]])
+                    Bsum=system.getBact((xp,yp,zp)).dot(currents)
+            
+                    #compute the saturation factor (value of langevin function)
+                    Bs[:,i,sz,sy,sx]=Bsum
+                    currents_app[:,i]=currents
+                    if(fullmag):
+                        usint[i,sz,sy,sx]=langevin(beta*norm(Bsum)/mu0)
+                    else:
+                        usint[i,sz,sy,sx]=Bsum.dot(np.array([1,0,0]))/norm(Bsum)*langevin(beta*norm(Bsum)/mu0)
+                    usig[i,sz,sy,sx]=(usint[i,sz,sy,sx]-usint[i-1,sz,sy,sx])/dt
+                simcounter=simcounter+1
 
     fptr=open(filename,"wb")
     pickle.dump((usig,usint,currents_app,Bs),fptr)
