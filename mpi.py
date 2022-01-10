@@ -9,6 +9,8 @@ from math import pi
 import numpy as np
 from math import floor,sqrt,pi,sin,cos,gcd,sinh,cosh
 import matplotlib.pyplot as plt
+from numpy import fft
+from numpy.linalg import norm
 
 mu0=4*pi*1e-7
 kb=1.38e-23
@@ -28,7 +30,7 @@ Dparticle=50e-9
 m=0.6/mu0*pi/6*Dparticle**3         #magnetic moment of particle (V_particle*Bsat)
 beta=mu0*m/(kb*Tp)
 cm=6.2e17               #specific particle concenration (#particles per kg)
-msample=0.1e-3          #mass of sample [kg]
+msample=50e-6          #mass of sample [kg]
 
 
 #computes the magnetization M[A/m] dependent upon external magnetic field H[A/m] and iron volumetric concentration [m^-3]
@@ -55,20 +57,29 @@ T0=1/f0
 Nsim=20
 Tsim=Nsim*T0
 ts=np.linspace(0,Tsim,Nsim*1000)
-Bs=5e-3*np.sin(2*pi*f0*ts)
+Bs=3.3e-3*np.sin(2*pi*f0*ts)
 mdipoles=np.zeros(len(Bs))
 for i in range(0,len(ts)):
     mdipoles[i]=mdipole(cm,msample,Bs[i]/mu0)
 plt.figure(2)
 plt.plot(ts,mdipoles)
 
-#
-#
+#compute the time response and induced voltage
+#-------------------------------------------------------------------------------------
 dt=ts[1]-ts[0]
-Hx=1e-3/mu0
+Hx=0.1e-3/mu0
 vs=np.zeros(len(Bs))
 vs[0]=0
 for i in range(1,len(Bs)):
     vs[i]=mu0*Hx*(mdipoles[i]-mdipoles[i-1])/dt
+vs_rms=np.sqrt(vs.dot(vs)/len(vs))
+print("RMS value of induced voltage %fmV"%(vs_rms*1e3))
 plt.figure(3)
 plt.plot(ts,vs)
+
+#compute and plot the dft
+#-------------------------------------------------------------------------------------
+plt.figure(4)
+vs_fft=fft.fft(vs)
+vs_fft_norm=vs_fft/norm(vs_fft)
+plt.plot(np.abs(vs_fft_norm[:int(len(vs_fft_norm)/2)]))
